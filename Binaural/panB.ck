@@ -1,8 +1,12 @@
-SndBuf b => Binaural binaural => dac;
-"special:dope" => b.read;
+CNoise noise => Binaural binaural => dac;
+"pink" => noise.mode;
+0 => binaural.azimuth;
+0 => binaural.elevation;
 
+0 => float ele;
 while( true )
 {
-    0 => b.pos;
-    200::ms => now;
+    (binaural.azimuth() + 1) % 360 => binaural.azimuth;
+    <<< "Azi, Ele:", binaural.azimuth(), binaural.elevation() >>>;
+    10::ms => now;
 }
