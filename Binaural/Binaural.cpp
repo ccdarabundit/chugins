@@ -18,7 +18,6 @@ using namespace std;
 
 // All HRTFs are 256 length FIRs
 #define  BLOCKSIZE 256
-#define MASK BLOCKSIZE-1
 #define NCHANNELS 16
 #define ANG2RAD 0.017453292519943
 #define RAD2ANG 57.295779513082320
@@ -78,8 +77,12 @@ public:
     // S14 - 135,  -51
     // S15 - 225,  -51
     // S16 - 315,  -51
-    Binaural(t_CKFLOAT fs)
+    Binaural(t_CKFLOAT fs):
+    m_azimuth(0),
+    m_elevation(0),
+    _SR(fs)
     {
+
         // output is stereo
         m_chans = 2;
         if (fs == 44.1e3)
@@ -93,12 +96,21 @@ public:
             hrir_r = &HRTF48K_R;// 48K
         }
         cindx = 0;
-        
+
+        // Clear all memory
+        std::memset(m_gain, 0.0f, NCHANNELS*sizeof(float));
+        std::memset(m_ambi_out, 0.0f, NCHANNELS*sizeof(float));
+        std::memset(bin_acc_l, 0.0f, NCHANNELS*sizeof(float));
+        std::memset(bin_acc_r, 0.0f, NCHANNELS*sizeof(float));
+        std::memset(tmpbuf, 0.0f, BLOCKSIZE*sizeof(float));
+        for (int i = 0; i < NCHANNELS; i++)
+            std::memset(&m_spkr_out[i][0],0.0f, BLOCKSIZE*sizeof(float));
+        // Initialize gains
+        compute_ambisonic_gains();
+
     }
 
     ~Binaural() {
-        delete [] hrir_l;
-        delete [] hrir_r;
     }
 
     // for Chugins extending UGen
@@ -106,7 +118,8 @@ public:
     {
         // Get mask index
         unsigned int maskInd = cindx & mask;
-
+        if (maskInd == 0)
+            cindx = maskInd;
         // Apply ambisonic panning
         float input = *in;
 
